@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>BlueUA</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="Author" content="foruok" />
+    <meta name="description" content="BlueUA based example web application." />
+    <style type="text/css">
+    </style>
+</head>
+
+
+<body>
+
+    <div id="login-page"
+        style="width: 424px; height: 360px; background-color: #f2f4f4; border: 1px solid grey; padding-top: 4px">
+        <table border="0" frame="void" width="418px">
+            <tr>
+                <td class="td_label" width="160px" align="right"><label for="account_label">USER NAME:</label></td>
+                <td width="258px"><input style="width:250px" id="account_label" type="text" value="90000" /></td>
+            </tr>
+            <tr>
+                <td class="td_label" align="right"><label for="password_label">Password:</label></td>
+                <td><input style="width:250px" id="password_label" type="password" value="90000" /></td>
+            </tr>
+            <tr>
+                <td class="td_label" align="right"><label for="server_label">SERVER:</label></td>
+                <td><input style="width:250px" id="server_label" class="last unset" type="text"
+                        value="test.bluetel.cn" /></td>
+            </tr>
+            <tr>
+                <td class="td_label" align="right"><label class="input_label" for="call_number">CALL number:</label>
+                </td>
+                <td><input style="width:250px" id="call_number" type="text" value="90001"></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="testStart()"> Initialize </button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="testCall()"> Call </button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="testTest()"> TEST</button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="hangupCall0()"> Hangup0and1 </button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="hangupCall1()"> Hangup2and3 </button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="captureLocalMedia()"> Capture Local Media</button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="closeLocalMedia()"> Stop Local Media</button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onmousedown="talkdown()" onmouseup="talkup()"> PTT talk</button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="muteCall0()"> mute call0</button></td>
+            </tr>
+            <tr>
+                <td colspan="2" align="center"><button onclick="unmuteCall0()"> unmute call0</button></td>
+            </tr>
+        </table>
+    </div>
+
+    <div
+        style="width: 424px; height: 324px;background-color: #333333; border: 2px solid blue; padding:0px; margin-top: 4px;">
+        <video id="localView" width="420px" height="320px" autoplay></video>
+    </div>
+
+    <div
+        style="width: 424px; height: 324px;background-color: #333333; border: 2px solid blue; padding:0px; margin-top: 4px;">
+        <video id="remoteView" width="420px" height="320px" autoplay></video>
+    </div>
+    <div
+        style="width: 424px; height: 324px;background-color: #333333; border: 2px solid blue; padding:0px; margin-top: 4px;">
+        <video id="remoteView1" width="420px" height="320px" autoplay></video>
+    </div>
+    <div
+        style="width: 424px; height: 324px;background-color: #333333; border: 2px solid blue; padding:0px; margin-top: 4px;">
+        <video id="remoteView2" width="420px" height="320px" autoplay></video>
+    </div>
+    <div
+        style="width: 424px; height: 324px;background-color: #333333; border: 2px solid blue; padding:0px; margin-top: 4px;">
+        <video id="remoteView3" width="420px" height="320px" autoplay></video>
+    </div>
+
+</body>
+<script type="text/javascript">
+
+    var mycoder = null;
+
+    var Module = {
+        onRuntimeInitialized: function () {
+            console.log('mycoder class ok');
+            mycoder = new Module.MyClass();
+        }
+    };
+</script>
+<script src="./js/bluesip.min.js" type="text/javascript"></script>
+<script src="./js/libbluecode.js" type="text/javascript"></script>
+
+<script>
+
+    // gulp dist
+    var localView = document.getElementById('localView');
+
+    var remoteView = Array();
+    remoteView[0] = document.getElementById('remoteView');
+    remoteView[1] = document.getElementById('remoteView1');
+    remoteView[2] = document.getElementById('remoteView2');
+    remoteView[3] = document.getElementById('remoteView3');
+
+    //打开关闭本地摄像头
+    var localView = document.getElementById('localView');
+    URL = window.URL || window.webkitURL;
+    var localStream = null;
+
+    function captureLocalMedia() {
+        //startRoom(301193);
+        console.info('Requesting local video & audio');
+        navigator.mediaDevices.getUserMedia({ audio: false, video: true }).then(function (stream) {
+            localStream = stream;
+            // 旧的浏览器可能没有srcObject
+            if ("srcObject" in localView) {
+                localView.srcObject = stream;
+            } else {
+                // 防止在新的浏览器里使用它，应为它已经不再支持了
+                localView.src = URL.createObjectURL(stream);
+            }
+
+            localView.onloadedmetadata = function (e) {
+                localView.play();
+            };
+        }).catch(function (err) {
+            console.log(err.name + ": " + err.message);
+        });
+    }
+
+    function closeLocalMedia() {
+        //endRoom(301193);
+        if (localStream) {
+            let tracks = localStream.getTracks();
+
+            tracks.forEach(function (track) {
+                track.stop();
+            });
+            localStream = null;
+        }
+        console.info('close local video & audio');
+    }
+
+
+    //初始化及消息回调函数示例
+    var blueUa = null;
+    var myUid = null;
+
+    function testStart() {
+
+        var account = document.getElementById("account_label").value.toString();
+        var secret = document.getElementById("password_label").value.toString();
+        var server = document.getElementById("server_label").value.toString();
+
+        console.info("get input info: account = ", account, " secret = ", secret, " server = ", server);
+
+        blueUa = new BlueSIP.BlueUA(server);
+
+        blueUa.addView(remoteView[0], 0);
+        blueUa.addView(remoteView[1], 1);
+        blueUa.addView(remoteView[2], 2);
+        blueUa.addView(remoteView[3], 3);
+
+        blueUa.connect();
+        blueUa.on('connected', function (data) {
+            console.info("connected");
+            blueUa.login(account, secret);
+
+        });
+        blueUa.on('closed', function (data) {
+            console.info("closed: ", data);
+        });
+        blueUa.on('error', function (data) {
+            console.info("error: ", data);
+        });
+
+        blueUa.on('loginSuceed', function (data) {
+            console.info("loginSuceed: ", data);
+            console.log(data.uid);
+            console.log(data.name);
+
+            console.log(data.message);
+            console.log(data.message.getConf().getVideoEnabled());
+
+            myUid = data.uid;
+
+            blueUa.setcoder(mycoder);
+
+            //一系列初始化操作
+            queryGroups();
+
+            queryDepartments(data.uid);
+
+        });
+
+        blueUa.on('loginFailed', function (data) {
+            console.info("loginFailed: ", data);
+        });
+
+        blueUa.on('callOutgoing', function (data) {
+            console.info("callOutgoing: ", data);
+        });
+
+        blueUa.on('callInComing', function (data) {
+            console.info("callInComing: ", data);
+
+            setTimeout(() => { blueUa.answer(data.id); }, 5000);
+
+        });
+
+        blueUa.on('callConnected', function (data) {
+            console.info("callConnected: ", data);
+        });
+
+        blueUa.on('callFailed', function (data) {
+            console.info("callFailed: ", data);
+        });
+
+        blueUa.on('callHangup', function (data) {
+            console.info("callHangup: ", data);
+        });
+
+        blueUa.on('recv', function (data) {
+            console.info("recv: ", data);
+            console.info("recv type: 0x", data.type.toString(16));
+            if (data.type == 0x82) // QueryGroupAck 群组列表返回
+            {
+                var ack = BlueSIP.PTT.QueryGroupAck.deserializeBinary(data.message);
+                console.info('QueryGroupAck:', ack.getResult());
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    var grouplist = ack.getGroupsList();
+
+                    var query = new BlueSIP.PTT.QueryMembers();
+                    for (var i = 0; i < grouplist.length; i++) {
+                        console.info("grouplist gid: ", grouplist[i].getGid());
+                        console.info("grouplist name: ", grouplist[i].getName());
+                        console.info("grouplist n_members: ", grouplist[i].getNMembers());
+
+                        enterGroup(grouplist[i].getGid()); //进入所有群组
+                        if (talkGid == null)
+                            talkGid = grouplist[i].getGid(); //将第一个群组设为当前讲话组
+
+                        query.addGids(grouplist[i].getGid()); //查询群组成员列表
+                    }
+                    blueUa.sendproto(query, 0x31);
+
+                    // enterGroup(grouplist[0].getGid());
+
+
+                }
+
+            }
+            else if (data.type == 0x83) // QueryMembersAck 群组成员列表返回
+            {
+                var ack = BlueSIP.PTT.QueryMembersAck.deserializeBinary(data.message);
+                var grouplist = ack.getMembersList();
+                for (var i = 0; i < grouplist.length; i++) {
+                    console.info("grouplist gid: ", grouplist[i].getGid());
+
+                    var ingroups = grouplist[i].getIngroupsList();
+                    for (var j = 0; j < ingroups.length; j++) {
+                        console.info("ingroups: ", ingroups[j]);  //在组用户的ID
+                    }
+
+                    var outgroups = grouplist[i].getOutgroupsList();
+                    for (var j = 0; j < outgroups.length; j++) {
+                        console.info("outgroups: ", outgroups[j]); //离组用户的ID
+                    }
+
+                    var memberlist = grouplist[i].getMembersList();
+                    for (var j = 0; j < memberlist.length; j++) {
+                        console.info("memberlist uid: ", memberlist[j].getUid());
+                        console.info("memberlist name: ", memberlist[j].getName());
+                        console.info("memberlist online: ", memberlist[j].getOnline()); //在线状态 0 离线 1 在线
+                        console.info("memberlist sipline: ", memberlist[j].getSipline()); //在线状态 0 离线 1 在线
+                        console.info("memberlist utype: ", memberlist[j].getUtype()); // 0 调度员 1 广播用户 2 视频用户 3 对讲用户 4 融合用户 5 外线用户 6 监控用户
+                    }
+                }
+            }
+            else if (data.type == 0x84) // JoinGroupAck
+            {
+                var ack = BlueSIP.PTT.JoinGroupAck.deserializeBinary(data.message);
+                console.info('JoinGroupAck:', ack.getResult());
+            }
+            else if (data.type == 0x85) // LeaveGroupAck
+            {
+                var ack = BlueSIP.PTT.LeaveGroupAck.deserializeBinary(data.message);
+                console.info('LeaveGroupAck:', ack.getResult());
+            }
+            else if (data.type == 0x86) // RequestMicAck
+            {
+                var ack = BlueSIP.PTT.RequestMicAck.deserializeBinary(data.message);
+                console.info('RequestMicAck:', ack.getResult());
+            }
+            else if (data.type == 0x87) // ReleaseMicAck
+            {
+                var ack = BlueSIP.PTT.ReleaseMicAck.deserializeBinary(data.message);
+                console.info('ReleaseMicAck:', ack.getResult());
+            }
+            else if (data.type == 0xc2) // LostMic 讲话时被打断话权
+            {
+                var lost = BlueSIP.PTT.LostMic.deserializeBinary(data.message);
+                console.info('LostMic:', lost.getGid());
+                console.info('LostMic:', lost.getReason());
+            }
+            else if (data.type == 0xc3) // Kickout
+            {
+                var kick = BlueSIP.PTT.Kickout.deserializeBinary(data.message);
+                console.info('Kickout:', kick.getReason());
+            }
+            else if (data.type == 0xc7) // MemberGetMic
+            {
+                var getmic = BlueSIP.PTT.MemberGetMic.deserializeBinary(data.message);
+                console.info('MemberGetMic:', getmic.getGid());
+                console.info('MemberGetMic:', getmic.getUid());
+            }
+            else if (data.type == 0xc8) // MemberLostMic
+            {
+                var lostmic = BlueSIP.PTT.MemberLostMic.deserializeBinary(data.message);
+                console.info('MemberLostMic:', lostmic.getGid());
+                console.info('MemberLostMic:', lostmic.getUid());
+            }
+            else if (data.type == 0xc8) // MemberLostMic
+            {
+                var lostmic = BlueSIP.PTT.MemberLostMic.deserializeBinary(data.message);
+                console.info('MemberLostMic:', lostmic.getGid());
+                console.info('MemberLostMic:', lostmic.getUid());
+            }
+            else if (data.type == 0x89) // Temp CallAck
+            {
+                var ack = BlueSIP.PTT.CallAck.deserializeBinary(data.message);
+                console.info('Temp CallAck:', ack.getResult());
+                console.info('Temp CallAck gid:', ack.getGid());
+
+                var uidlist = ack.getUidList();
+                for (var i = 0; i < uidlist.length; i++) {
+                    console.info('Temp CallAck uid:', uidlist[i]); // Temp CallAck userlist
+                }
+
+                if (uidlist[0] > 0) {
+                    talkGidLast = talkGid;
+                    talkGid = ack.getGid();
+                }
+
+
+            }
+            else if (data.type == 0xcc) // TempCallArrived 临时呼叫时候推送到被叫的提示 
+            {
+                var arr = BlueSIP.PTT.TempCallArrived.deserializeBinary(data.message);
+                console.info('TempCallArrived:', arr.getCallingName());
+                console.info('TempCallArrived:', arr.getGid());
+
+                talkGidLast = talkGid;
+                talkGid = arr.getGid();
+            }
+            else if (data.type == 0xca) // TempCallStatus 临时呼叫状态提示,用于告知主被叫退出
+            {
+                var arr = BlueSIP.PTT.TempCallStatus.deserializeBinary(data.message);
+                console.info('TempCallStatus:', arr.getCallStatus());
+                console.info('TempCallStatus:', arr.getGid());
+
+                talkGid = talkGidLast;
+                talkGidLast = null;
+            }
+            else if (data.type == 0x91) // QueryDepartmentsAck 部门列表返回
+            {
+                var ack = BlueSIP.PTT.QueryDepartmentsAck.deserializeBinary(data.message);
+                console.info('QueryDepartmentsAck:', ack.getResult());
+                var departlist = ack.getDepartmentList();
+                var query = new BlueSIP.PTT.QueryDepartmentUsers();
+                for (var i = 0; i < departlist.length; i++) {
+                    console.info("departlist id: ", departlist[i].getDid()); //Department ID
+                    console.info("departlist name: ", departlist[i].getName()); //Department的name字段
+                    console.info("departlist pid: ", departlist[i].getParentDid()); //Department parent ID
+                    query.addDids(departlist[i].getDid()); //查询部门成员列表
+                }
+
+                blueUa.sendproto(query, 0x12);
+            }
+            else if (data.type == 0x92) // QueryDepartmentUsersAck 部门成员列表返回
+            {
+                var ack = BlueSIP.PTT.QueryDepartmentUsersAck.deserializeBinary(data.message);
+                console.info('QueryDepartmentUsersAck:', ack.getResult());
+                var userlist = ack.getDepartmentusersList();
+                for (var i = 0; i < userlist.length; i++) {
+                    console.info("userlist uid: ", userlist[i].getUid());
+                    console.info("userlist name: ", userlist[i].getName());
+                    console.info("userlist did: ", userlist[i].getDid()); //Department ID
+                    console.info("userlist line: ", userlist[i].getOnline()); //在线状态  0 离线 1 在线
+                    console.info("userlist number: ", userlist[i].getNumber()); //用户号码 用于音视频呼叫
+                    console.info("userlist sipline: ", userlist[i].getSipline()); //音视频在线状态
+                    console.info("userlist callstate: ", userlist[i].getCallstate()); //音视频通话状态  0待机 1 主叫振铃 2 被叫振铃 3 通话中
+                    console.info("userlist connumber: ", userlist[i].getConnumber()); //音视频通话号码
+
+                }
+            }
+            else if (data.type == 0x96) // QueryUsersGpsAck 用户位置消息返回
+            {
+                var ack = BlueSIP.PTT.QueryUsersGpsAck.deserializeBinary(data.message);
+                console.info('QueryUsersGpsAck:', ack.getResult());
+                var gpslist = ack.getUsersgpsList();
+                for (var i = 0; i < gpslist.length; i++) {
+                    console.info("gpslist uid: ", gpslist[i].getUid()); //user ID
+                    console.info("gpslist type: ", gpslist[i].getType()); //定位数据类型 0 gps 1 百度坐标
+                    console.info("gpslist longitude: ", gpslist[i].getLongitude()); //经度
+                    console.info("gpslist latitude: ", gpslist[i].getLatitude()); //纬度
+                    console.info("gpslist createtime: ", gpslist[i].getCreatetime()); //定位到达时间
+                    console.info("gpslist leavetime: ", gpslist[i].getLeavetime()); //最后一次定位时间
+                    console.info("gpslist online: ", gpslist[i].getOnline()); //在线状态 0 离线 1 在线
+                }
+            }
+            else if (data.type == 0x97) // QueryUserGpsTrailAck 用户轨迹消息返回
+            {
+                var ack = BlueSIP.PTT.QueryUserGpsTrailAck.deserializeBinary(data.message);
+                console.info('QueryUserGpsTrailAck:', ack.getResult());
+                var traillist = ack.getUsersgpstrailList();
+                for (var i = 0; i < traillist.length; i++) {
+                    console.info("traillist uid: ", traillist[i].getUid()); //user ID
+                    console.info("traillist type: ", traillist[i].getType()); //定位数据类型 0 gps 1 百度坐标
+                    console.info("traillist longitude: ", traillist[i].getLongitude()); //经度
+                    console.info("traillist latitude: ", traillist[i].getLatitude()); //纬度
+                    console.info("traillist createtime: ", traillist[i].getCreatetime()); //定位到达时间
+                    console.info("traillist leavetime: ", traillist[i].getLeavetime()); //最后一次定位时间
+                }
+            }
+            else if (data.type == 0xe1) // UserLineChange 用户在线状态变化
+            {
+                console.log("用户在线状态变化")
+                var change = BlueSIP.PTT.UserLineChange.deserializeBinary(data.message);
+                console.info('UserLineChange uid:', change.getUid()); //user ID 
+                console.info('UserLineChange online:', change.getOnline()); //在线状态 0 离线 1 在线
+            }
+            else if (data.type == 0xe3) // GroupUserLineChange 用户在组状态变化
+            {
+                var change = BlueSIP.PTT.GroupUserLineChange.deserializeBinary(data.message);
+                console.info('GroupUserLineChange gid:', change.getGid()); // 群组ID
+                console.info('GroupUserLineChange uid:', change.getUid()); //user ID 
+                console.info('GroupUserLineChange online:', change.getOnline()); //群组在线状态 0 离组 1 在组
+            }
+            else if (data.type == 0xe4) // UserSipLineChange 用户音视频在线状态变化
+            {
+                var change = BlueSIP.PTT.UserSipLineChange.deserializeBinary(data.message);
+                console.info('UserSipLineChange uid:', change.getUid()); //user ID 
+                console.info('UserSipLineChange online:', change.getOnline()); //在线状态 0 离线 1 在线
+            }
+            else if (data.type == 0xe5) // UserSipStatusChange 用户通话状态变化
+            {
+                console.log("用户通话状态变化")
+                var change = BlueSIP.PTT.UserSipStatusChange.deserializeBinary(data.message);
+                console.info('UserSipStatusChange uid:', change.getUid()); //user ID 
+                console.info('UserSipStatusChange callstatus:', change.getCallstatus()); //通话状态 0 挂机 1 主叫振铃 2 被叫振铃 3 通话中 
+                console.info('UserSipStatusChange connumber:', change.getConnumber()); //通话号码
+            }
+            else if (data.type == 0x13) // UserMessage 收到用户短消息
+            {
+                var mess = BlueSIP.PTT.UserMessage.deserializeBinary(data.message);
+                console.info('UserMessage uid:', mess.getUid());
+                console.info('UserMessage fromuid:', mess.getFromuid());
+                console.info('UserMessage message:', mess.getMessage());
+                console.info('UserMessage timestamp:', mess.getTimestamp());
+
+                var ack = new BlueSIP.PTT.UserMessageAck(); // 回复ack
+                ack.setResult(0);
+                ack.setUid(mess.getUid());
+                ack.setFromuid(mess.getFromuid());
+                ack.setTimestamp(mess.getTimestamp());
+                blueUa.sendproto(ack, 0x93);
+            }
+            else if (data.type == 0x93) // UserMessageAck 服务器收到用户短消息ack
+            {
+                var ack = BlueSIP.PTT.UserMessageAck.deserializeBinary(data.message);
+                console.info('UserMessageAck uid:', ack.getUid());
+                console.info('UserMessageAck fromuid:', ack.getFromuid());
+                console.info('UserMessageAck message:', ack.getMessage());
+                console.info('UserMessageAck timestamp:', ack.getTimestamp());
+
+            }
+            else if (data.type == 0x14) // GroupMessage 收到群组短消息
+            {
+                var mess = BlueSIP.PTT.GroupMessage.deserializeBinary(data.message);
+                console.info('UserMessage gid:', mess.getGid());
+                console.info('UserMessage fromuid:', mess.getFromuid());
+                console.info('UserMessage message:', mess.getMessage());
+                console.info('UserMessage timestamp:', mess.getTimestamp());
+
+                var ack = new BlueSIP.PTT.GroupMessageAck(); // 回复ack
+                ack.setResult(0);
+                ack.setGid(mess.getGid());
+                ack.setFromuid(mess.getFromuid());
+                ack.setTimestamp(mess.getTimestamp());
+                blueUa.sendproto(ack, 0x94);
+            }
+            else if (data.type == 0x94) // GroupMessageAck 服务器收到用户短消息ack
+            {
+                var ack = BlueSIP.PTT.GroupMessageAck.deserializeBinary(data.message);
+                console.info('UserMessage uid:', ack.getGid());
+                console.info('UserMessage fromuid:', ack.getFromuid());
+                console.info('UserMessage message:', ack.getMessage());
+                console.info('UserMessage timestamp:', ack.getTimestamp());
+            }
+            else if (data.type == 0xc6) // GroupListChanged 通知群组发生改变
+            {
+                var change = BlueSIP.PTT.GroupListChanged.deserializeBinary(data.message);
+                var uplist = change.getUpdateGroupsList();
+                for (var i = 0; i < uplist.length; i++) {
+                    console.info("UpdateGroupsList gid: ", uplist[i].getGid()); //group ID
+                    console.info("UpdateGroupsList name: ", uplist[i].getName()); //group name
+                }
+                var rmgidlist = change.getRmGroupsList();
+                for (var i = 0; i < rmgidlist.length; i++) {
+                    console.info("UpdateGroupsList gid: ", rmgidlist[i]); //group ID
+                }
+            }
+            else if (data.type == 0x8c) // AddGroupAck 添加群组ack
+            {
+                var ack = BlueSIP.PTT.AddGroupAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    var group = ack.getGroup();
+
+                    console.info("add group gid: ", group.getGid());
+                    console.info("add group name: ", group.getName());
+                    console.info("add group n_members: ", group.getNMembers());
+                }
+            }
+            else if (data.type == 0x8d) // delGroupAck 删除群组ack
+            {
+                var ack = BlueSIP.PTT.DelGroupAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    var group = ack.getGroup();
+                    console.info("del group gid: ", ack.getGid());
+                }
+            }
+            else if (data.type == 0x9e) // VideoTransfer  ack
+            {
+                var ack = BlueSIP.PTT.VideoTransferAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("VideoTransfer sucess: ", ack.getSrcuid());
+                }
+            }
+            else if (data.type == 0xa2) // VideoTransferStop  ack
+            {
+                var ack = BlueSIP.PTT.VideoTransferStopAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("VideoTransferStop sucess: ", ack.getSrcuid());
+                }
+            }
+            else if (data.type == 0xa3) // VideoRecord  ack
+            {
+                var ack = BlueSIP.PTT.VideoRecordAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("VideoRecord sucess: ", ack.getUid());
+                }
+            }
+            else if (data.type == 0xa4) // VideoRecordStop  ack
+            {
+                var ack = BlueSIP.PTT.VideoRecordStopAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("VideoRecordStop sucess: ", ack.getSrcuid());
+                }
+            }
+            else if (data.type == 0xb2) // QuerRecordsAck 查询录音录像ack
+            {
+                var ack = BlueSIP.PTT.QuerGroupRecordsAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("QuerGroupRecordsAck: ", ack.getCounts()); // 总数量
+                    var recordlist = ack.getRecordList();
+                    for (var i = 0; i < recordlist.length; i++) {
+                        console.info("QueryUserReportAck rid: ", recordlist[i].getRid());               //Record ID
+                        console.info("QueryUserReportAck adduid: ", recordlist[i].getAdduid());         //Record Add User ID
+                        console.info("QueryUserReportAck recorduid: ", recordlist[i].getRecorduid());         //Record User ID
+                        console.info("QueryUserReportAck recordtime: ", recordlist[i].getRecordtime());   //Record时间
+                        console.info("QueryUserReportAck filename: ", recordlist[i].getFilename());   //Report filename
+                        console.info("QueryUserReportAck recordtype: ", recordlist[i].getRecordtype());     //Report的 recordtype 0所有 1音频 2视频
+                    }
+                }
+            }
+            else if (data.type == 0x77) // QuerCallRecordsAck 查询通话记录ack
+            {
+                var ack = BlueSIP.PTT.QueryCallRecordsAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("QueryCallRecordsAck: ", ack.getCounts()); // 总数量
+                    var recordlist = ack.getRecordList();
+                    for (var i = 0; i < recordlist.length; i++) {
+                        console.info("QuerCallRecordsAck rid: ", recordlist[i].getCalldate());                //呼叫时间
+                        console.info("QuerCallRecordsAck src: ", recordlist[i].getSrc());                   //主叫号码
+                        console.info("QuerCallRecordsAck dst: ", recordlist[i].getDst());                   //被叫号码 
+                        console.info("QuerCallRecordsAck duration: ", recordlist[i].getDuration());         //呼叫时长
+                        console.info("QuerCallRecordsAck billsec: ", recordlist[i].getBillsec());           //接通时长
+                        console.info("QuerCallRecordsAck filename: ", recordlist[i].getFilename());         //录音文件
+                    }
+                }
+            }
+            else if (data.type == 0x51) // AddUserReport 实时人员现场上报信息
+            {
+                var ack = BlueSIP.PTT.AddUserReport.deserializeBinary(data.message);
+
+                var report = ack.getReport();
+                console.info("AddUserReport rid: ", report.getRid());               //Report ID
+                console.info("AddUserReport adduid: ", report.getAdduid());         //Report User ID
+                console.info("AddUserReport reporttime: ", report.getReporttime());   //Report时间
+                console.info("AddUserReport longitude: ", report.getLongitude());   //Report的经度
+                console.info("AddUserReport latitude: ", report.getLatitude());     //Report的纬度
+                console.info("AddUserReport name: ", report.getName());             //Report的name
+                console.info("AddUserReport desc: ", report.getDesc());             //Report的描述
+                console.info("AddUserReport type: ", report.getType());             //report的状态 1 普通 2 紧急
+                console.info("AddUserReport files: ", report.getFiles());           //report的附件
+                console.info("AddUserReport locname: ", report.getLocname());       //report的定位描述
+
+            }
+            else if (data.type == 0xb2) // QueryUserReportAck 查询人员现场上报信息ack
+            {
+                var ack = BlueSIP.PTT.QueryUserReportAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("QueryUserReportAck: ", ack.getCounts()); // 总数量
+                    var reportlist = ack.getReportList();
+                    for (var i = 0; i < reportlist.length; i++) {
+                        console.info("QueryUserReportAck rid: ", reportlist[i].getRid());               //Report ID
+                        console.info("QueryUserReportAck adduid: ", reportlist[i].getAdduid());         //Report User ID
+                        console.info("QueryUserReportAck reporttime: ", reportlist[i].getReporttime());   //Report时间
+                        console.info("QueryUserReportAck longitude: ", reportlist[i].getLongitude());   //Report的经度
+                        console.info("QueryUserReportAck latitude: ", reportlist[i].getLatitude());     //Report的纬度
+                        console.info("QueryUserReportAck name: ", reportlist[i].getName());             //Report的name
+                        console.info("QueryUserReportAck desc: ", reportlist[i].getDesc());             //Report的描述
+                        console.info("QueryUserReportAck type: ", reportlist[i].getType());             //report的状态 1 普通 2 紧急
+                        console.info("QueryUserReportAck files: ", reportlist[i].getFiles());           //report的附件
+                        console.info("QueryUserReportAck locname: ", reportlist[i].getLocname());       //report的定位描述
+
+                    }
+                }
+            }
+            else if (data.type == 0xee) // AddUserAlarmNoyify 实时人员报警信息
+            {
+                var ack = BlueSIP.PTT.AddUserAlarmNoyify.deserializeBinary(data.message);
+                var alarm = ack.getAlarm();
+                console.info("AddUserAlarmNoyify aid: ", alarm.getAid());               //Alarm ID
+                console.info("AddUserAlarmNoyify adduid: ", alarm.getAdduid());         //Alarm User ID
+                console.info("AddUserAlarmNoyify alarmtime: ", alarm.getAlarmtime());   //Alarm时间
+                console.info("AddUserAlarmNoyify longitude: ", alarm.getLongitude());   //alarm的经度
+                console.info("AddUserAlarmNoyify latitude: ", alarm.getLatitude());     //alarm的纬度
+                console.info("AddUserAlarmNoyify info: ", alarm.getInfo());             //alarm的内容
+                console.info("AddUserAlarmNoyify status: ", alarm.getStatus());         //alarm的状态 1 为未处理 2 为已处理
+                console.info("AddUserAlarmNoyify handleuid: ", alarm.getHandleuid());   //处理alarm的user ID
+                console.info("AddUserAlarmNoyify handletime: ", alarm.getHandletime());       //处理alarm的时间
+                console.info("AddUserAlarmNoyify handledesc: ", alarm.getHandledesc());     //处理alarm的描述
+
+            }
+            else if (data.type == 0xba) // QueryUsersAlarmsAck 查询人员报警信息ack
+            {
+                var ack = BlueSIP.PTT.QueryUsersAlarmsAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("QueryUsersAlarmsAck: ", ack.getCounts()); // 总数量
+                    var alarmlist = ack.getAlarmList();
+                    for (var i = 0; i < alarmlist.length; i++) {
+                        console.info("QueryUsersAlarmsAck aid: ", alarmlist[i].getAid());               //Alarm ID
+                        console.info("QueryUsersAlarmsAck adduid: ", alarmlist[i].getAdduid());         //Alarm User ID
+                        console.info("QueryUsersAlarmsAck alarmtime: ", alarmlist[i].getAlarmtime());   //Alarm时间
+                        console.info("QueryUsersAlarmsAck longitude: ", alarmlist[i].getLongitude());   //alarm的经度
+                        console.info("QueryUsersAlarmsAck latitude: ", alarmlist[i].getLatitude());     //alarm的纬度
+                        console.info("QueryUsersAlarmsAck info: ", alarmlist[i].getInfo());             //alarm的内容
+                        console.info("QueryUsersAlarmsAck status: ", alarmlist[i].getStatus());         //alarm的状态 1 为未处理 2 为已处理
+                        console.info("QueryUsersAlarmsAck handleuid: ", alarmlist[i].getHandleuid());   //处理alarm的user ID
+                        console.info("QueryUsersAlarmsAck handletime: ", alarmlist[i].getHandletime());       //处理alarm的时间
+                        console.info("QueryUsersAlarmsAck handledesc: ", alarmlist[i].getHandledesc());     //处理alarm的描述
+                    }
+                }
+            }
+            else if (data.type == 0xbb) // HandleAlarmAck 处理人员报警信息ack
+            {
+                var ack = BlueSIP.PTT.HandleAlarmAck.deserializeBinary(data.message);
+                if (ack.getResult() == 0) // 0 表示成功 -1 表示失败
+                {
+                    console.info("HandleAlarmAck: ", ack.getAid()); //Alarm ID
+                    console.info("HandleAlarmAck: ", ack.getHandledesc()); //处理alarm的描述
+                    console.info("HandleAlarmAck: ", ack.getHandletime());  //处理alarm的时间
+                }
+            }
+            //视频会议功能相关返回推送接口 需视频会议服务器硬件配合才能使用
+            //
+            else if (data.type == 0xeb) // RoomSplitNotify 视频会议室分屏通知
+            {
+                var notify = BlueSIP.PTT.RoomSplitNotify.deserializeBinary(data.message);
+                console.info('RoomSplitNotify gid:', notify.getRid());
+                console.info("RoomSplitNotify uidslist: ", notify.getSplit());
+            }
+            else if (data.type == 0xed) // RoomScreenNotify 视频会议室在屏人员顺序通知
+            {
+                var notify = BlueSIP.PTT.RoomScreenNotify.deserializeBinary(data.message);
+                console.info('RoomScreenNotify gid:', notify.getRid());
+                var uidslist = notify.getUidsList();
+                for (var i = 0; i < uidslist.length; i++) {
+                    console.info("RoomScreenNotify uidslist: ", uidslist[i]);
+                }
+            }
+        });
+
+
+    }
+
+    //音视频呼叫函数 参数为被叫号码和是否视频
+    function testCall() {
+        var call_number_ = document.getElementById("call_number").value.toString();
+        blueUa.call(call_number_, true);
+        //blueUa.call(call_number_, false);
+    }
+
+    //测试函数 用于测试调用的接口
+    function testTest() {
+        // queryUserGps(2417);
+        //transferCall(450376,450377);
+        // sendGroupMessage(2000000000,450369,"123876");
+
+        /*setRoomsplit(301193,1);
+        var uids = new Array(3);
+        uids[0] = 2409;
+        uids[1] = 2544;
+        uids[2] = 2410;
+        setRoomscreen(301193,uids);*/
+
+        /*var uids = new Array();
+        queryUserReport(uids);
+        queryUseralarms(uids);*/
+
+        //blueUa.addView(remoteView[1],0);
+
+        /*var uids = new Array(1);
+        
+        if(talkGidLast)
+            uids[0] = 0; //释放临时呼叫
+        else
+            //uids[0] = 4694; //发起临时呼叫
+        uids[0] = 4681; //发起临时呼叫
+        tempPttCall(uids);*/
+
+        //SipCall(32,10001000);
+        QuerCallRecords();
+    }
+
+    //挂机函数
+    function hangupCall0() {
+        blueUa.hangup(0);
+        blueUa.hangup(1);
+    }
+    function hangupCall1() {
+        blueUa.hangup(2);
+        blueUa.hangup(3);
+    }
+
+    //禁言和禁视频函数
+    function muteCall0() {
+        console.info('muteCall0 mute status:', blueUa.isMuted(0));
+        var options = {
+            'audio': true,   // Local audio is mute
+            'video': true    // Local video is  mute
+        }
+        blueUa.mute(0, options);
+    }
+    //取消禁言和禁视频函数
+    function unmuteCall0() {
+        console.info('muteCall0 mute status:', blueUa.isMuted(0));
+        var options = {
+            'audio': true,   // Local audio is unmute
+            'video': true   // Local video is unmute
+        }
+        blueUa.unmute(0, options);
+    }
+
+    //调用方法示例
+    var talkGid = null;
+    var talkGidLast = null;
+
+    function talkdown() {
+        console.log("talkdown：", talkGid);
+
+        if (blueUa) {
+            var mic = new BlueSIP.PTT.RequestMic();
+            if (talkGid)
+                mic.setGid(talkGid);
+            blueUa.sendproto(mic, 0x06);
+        }
+    }
+    function talkup() {
+        console.log("talkup：", talkGid);
+
+        if (blueUa) {
+            var mic = new BlueSIP.PTT.ReleaseMic();
+            if (talkGid)
+                mic.setGid(talkGid);
+            blueUa.sendproto(mic, 0x07);
+        }
+    }
+    function tempPttCall(uids) {
+        console.log("tempPttCall:", uids);
+        if (blueUa) {
+            var call = new BlueSIP.PTT.Call();
+            for (var i = 0; i < uids.length; i++) {
+                call.addUid(uids[i]);
+            }
+            blueUa.sendproto(call, 0x09);
+        }
+    }
+
+    //发送短消息
+    function sendMessage(uid, fromuid, message) {
+        console.log("sendMessage");
+
+        if (blueUa) {
+            var send = new BlueSIP.PTT.UserMessage();
+            send.setUid(uid);
+            send.setFromuid(fromuid);
+            send.setMessage(message);
+            send.setTimestamp(Date.parse(new Date()) / 1000);
+            blueUa.sendproto(send, 0x13);
+        }
+    }
+
+    //发送群组短消息
+    function sendGroupMessage(gid, fromuid, message) {
+        console.log("sendGroupMessage");
+
+        if (blueUa) {
+            var send = new BlueSIP.PTT.GroupMessage();
+            send.setGid(gid);
+            send.setFromuid(fromuid);
+            send.setMessage(message);
+            send.setTimestamp(Date.parse(new Date()) / 1000);
+            blueUa.sendproto(send, 0x14);
+        }
+    }
+
+
+    //查询群组列表
+    function queryGroups() {
+        console.log("queryGroups");
+
+        if (blueUa) {
+            var querygroup = new BlueSIP.PTT.QueryGroup();
+            blueUa.sendproto(querygroup, 0x02);
+        }
+    }
+
+    //进入群组
+    function enterGroup(gid) {
+        console.log("enterGroup");
+
+        if (blueUa) {
+            var entergroup = new BlueSIP.PTT.EnterGroup();
+            entergroup.setGid(gid);
+            blueUa.sendproto(entergroup, 0x04);
+        }
+    }
+
+    //离开群组
+    function leaveGroup(gid) {
+        console.log("leaveGroup");
+
+        if (blueUa) {
+            var leavegroup = new BlueSIP.PTT.LeaveGroup();
+            leavegroup.setGid(gid);
+            blueUa.sendproto(leavegroup, 0x05);
+        }
+    }
+
+    //添加群组
+    function addGroup(name, uids) {
+        console.log("addGroup");
+
+        if (blueUa) {
+            var add = new BlueSIP.PTT.AddGroup();
+            add.setName(name);
+            for (var i = 0; i < uids.length; i++) {
+                set.addUids(uids[i]);
+            }
+            blueUa.sendproto(add, 0x0c);
+        }
+    }
+
+    //删除群组
+    function delGroup(gid) {
+        console.log("delGroup");
+
+        if (blueUa) {
+            var del = new BlueSIP.PTT.DelGroup();
+            del.setGid(gid);
+            blueUa.sendproto(add, 0x0d);
+        }
+    }
+
+    //查询部门列表
+    function queryDepartments(uid) {
+        console.log("queryDepartments");
+
+        if (blueUa) {
+            var querydeparts = new BlueSIP.PTT.QueryDepartments();
+            querydeparts.setUid(uid);
+            blueUa.sendproto(querydeparts, 0x11);
+        }
+    }
+
+    //查询用户位置
+    function queryUserGps(uid) {
+        console.log("queryUserGps:", uid);
+
+        if (blueUa) {
+            var query = new BlueSIP.PTT.QueryUsersGps();
+            query.addUids(uid);
+            blueUa.sendproto(query, 0x16);
+        }
+    }
+
+    //查询用户轨迹
+    function queryUserGpsTrail(uid) {
+        console.log("queryUserGpsTrail:", uid);
+
+        if (blueUa) {
+            var query = new BlueSIP.PTT.QueryUserGpsTrail();
+            query.setUid(uid);
+            query.setStarttime("2109-07-18 10:00:00");
+            query.setEnddtime("2019-08-12 23:59:59");
+            blueUa.sendproto(query, 0x17);
+        }
+    }
+
+    //当前用户视频转发给其他人员
+    function transferCall(srcuid, dstuid) {
+        console.log("transferCall:", srcuid, dstuid);
+
+        if (blueUa) {
+            var transfer = new BlueSIP.PTT.VideoTransfer();
+            transfer.setSrcuid(srcuid);
+            transfer.addDstuids(dstuid);
+            blueUa.sendproto(transfer, 0x1e);
+        }
+    }
+
+    //录制当前通话用户音视频
+    function VideoRecord(dstuid) {
+        console.log("VideoRecord:", dstuid);
+
+        if (blueUa) {
+            var start = new BlueSIP.PTT.VideoRecord();
+            start.setUid(dstuid);
+            start.setType(dstuid); //类型 1音频 2 视频
+            blueUa.sendproto(start, 0x23);
+        }
+    }
+
+    //停止录制当前通话用户音视频
+    function VideoRecordStop(dstuid) {
+        console.log("VideoRecordStop:", dstuid);
+
+        if (blueUa) {
+            var stop = new BlueSIP.PTT.VideoRecordStop();
+            stop.setUid(dstuid);
+            blueUa.sendproto(stop, 0x24);
+        }
+    }
+
+    //查询录音录像记录
+    function QuerRecords(uids) //uids array为 空时 表示查询所有人的报警信息
+    {
+        console.log("QuerRecords");
+
+        if (blueUa) {
+            var query = new BlueSIP.PTT.QuerRecords();
+
+            for (var i = 0; i < uids.length; i++) {
+                query.addUids(uids[i]);
+            }
+
+            query.adduid(myUid); ////添加管理员uid
+
+            query.setStarttime("2019-08-08 10:00:00");
+            query.setEnddtime("2019-10-12 23:59:59");
+            query.setType(0);     //0所有 1音频 2视频
+            query.setLimitstart(0);     //此次返回数据 limit查询条件 例如0  表示 limit 0,50
+            query.setLimitcount(50);    //此次返回数据 limit查询数量 例如50 表示 limit 0,50
+
+            blueUa.sendproto(query, 0x25);
+        }
+    }
+
+    //查询通话记录
+    function QuerCallRecords() //
+    {
+        console.log("QuerCallRecords");
+
+        if (blueUa) {
+            var query = new BlueSIP.PTT.QueryCallRecords();
+
+            query.setStarttime("2019-08-08 10:00:00");
+            query.setEnddtime("2020-11-03 23:59:59");
+            query.setSrc("0");          //主叫号码 0所有 
+            query.setDst("0");          //被叫号码 0所有
+            query.setLimitstart(0);     //此次返回数据 limit查询条件 例如0  表示 limit 0,50
+            query.setLimitcount(50);    //此次返回数据 limit查询数量 例如50 表示 limit 0,50
+
+            blueUa.sendproto(query, 0x67);
+        }
+    }
+
+    //查询人员现象上报信息
+    function queryUserReport(uids) //uids array为 空时 表示查询所有人的报警信息
+    {
+        console.log("queryUserReport");
+
+        if (blueUa) {
+            var query = new BlueSIP.PTT.QueryUserReport();
+
+            for (var i = 0; i < uids.length; i++) {
+                query.addUids(uids[i]);
+            }
+
+            query.setStarttime("2019-08-08 10:00:00");
+            query.setEnddtime("2019-08-12 23:59:59");
+            query.setType(0);     //report的状态 0 全部 1 普通 2 紧急
+            query.setLimitstart(0);     //此次返回数据 limit查询条件 例如0  表示 limit 0,50
+            query.setLimitcount(50);    //此次返回数据 limit查询数量 例如50 表示 limit 0,50
+
+            blueUa.sendproto(query, 0x52);
+        }
+    }
+
+
+    //查询人员报警信息
+    function queryUseralarms(uids) //uids array为 空时 表示查询所有人的报警信息
+    {
+        console.log("queryUseralarms");
+
+        if (blueUa) {
+            var query = new BlueSIP.PTT.QueryUsersAlarms();
+
+            for (var i = 0; i < uids.length; i++) {
+                query.addUids(uids[i]);
+            }
+
+            query.setStarttime("2019-08-08 10:00:00");
+            query.setEnddtime("2019-08-12 23:59:59");
+            query.setAlarmstat(0);     //类型 0全部 1 为未处理 2 为已处理
+            query.setLimitstart(0);     //此次返回数据 limit查询条件 例如0  表示 limit 0,50
+            query.setLimitcount(50);    //此次返回数据 limit查询数量 例如50 表示 limit 0,50
+
+            blueUa.sendproto(query, 0x5a);
+        }
+    }
+
+    //处理人员报警信息
+    function handlealarm(aid, desc) //aid 为报警信息id
+    {
+        console.log("handlealarm:", aid);
+
+        var handle = new BlueSIP.PTT.HandleAlarm();
+        handle.setAid(aid);
+        handle.setHandledesc(desc);
+        blueUa.sendproto(handle, 0x5b);
+    }
+
+    //群呼广播接口
+    function SipCall(uid, gid) //uid调度员uid gid群组gid
+    {
+        console.log("SipCall");
+
+        if (blueUa) {
+            var call = new BlueSIP.PTT.SipCall();
+
+            call.setUid(uid);
+            call.setType(4);     //3广播 4群呼
+            call.setData(gid + '');
+
+
+            blueUa.sendproto(call, 0x55);
+        }
+    }
+
+
+
+
+    //视频会议功能相关调用接口 需视频会议服务器硬件配合才能使用
+    ///////////
+
+
+    //开始视频会议
+    function startRoom(rid) {
+        console.log("startRoom:", rid);
+
+        if (blueUa) {
+            var start = new BlueSIP.PTT.StartRoom();
+            start.setRid(rid);
+            blueUa.sendproto(start, 0x2b);
+        }
+    }
+
+    //结束视频会议
+    function endRoom(rid) {
+        console.log("endRoom:", rid);
+
+        if (blueUa) {
+            var start = new BlueSIP.PTT.EndRoom();
+            start.setRid(rid);
+            blueUa.sendproto(start, 0x2c);
+        }
+    }
+
+    //设置视频会议分屏
+    function setRoomsplit(rid, split) {
+        console.log("setRoomsplit:", rid, "--", split);
+
+        if (blueUa) {
+            var set = new BlueSIP.PTT.SetRoomSplit();
+            set.setRid(rid);
+            set.setSplit(split);
+            blueUa.sendproto(set, 0x32);
+        }
+    }
+
+    //设置视频会议在屏人员顺序
+    function setRoomscreen(rid, uids) {
+        console.log("setRoomscreen:", rid);
+        console.log("setRoomscreen uids:", uids);
+
+        if (blueUa) {
+            var set = new BlueSIP.PTT.SetRoomScreen();
+            set.setRid(rid);
+            for (var i = 0; i < uids.length; i++) {
+                set.addUids(uids[i]);
+            }
+
+            blueUa.sendproto(set, 0x3a);
+        }
+    }
+</script>
+
+</html>
